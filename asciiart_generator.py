@@ -1,5 +1,3 @@
-
-
 from PIL import Image
 import shutil
 import os
@@ -40,16 +38,23 @@ def clear_terminal():
 def display_ascii_art_color(image_path):
     terminal_width = shutil.get_terminal_size().columns
     ascii_art = image_to_ascii_color(image_path, terminal_width)
-    clear_terminal()
-    print(ascii_art)
+    #clear_terminal()
+    #print(ascii_art)
+    return ascii_art
 
-# LOOP dinamico (aggiorna ogni 0.5s)
-image_path = "images/console-trader.jpg"
 
-try:
-    while True:
-        display_ascii_art_color(image_path)
-        time.sleep(0.5)
-except KeyboardInterrupt:
-    clear_terminal()
-    print("Uscita.")
+if __name__ == '__main__':
+    # LOOP dinamico (aggiorna ogni 0.5s)
+    image_path = "images/console-trader.jpg"
+
+    try:
+        while True:
+            display_ascii_art_color(image_path)
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        clear_terminal()
+        print("Uscita.")
+
+
+
+

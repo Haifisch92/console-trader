@@ -7,6 +7,8 @@ import getpass
 import os
 import logging
 import shutil
+import sqlite3
+from asciiart_generator import display_ascii_art_color
 
 GIALLO = "\033[38;5;226m"
 BLU    = "\033[38;5;27m"
@@ -75,39 +77,33 @@ async def cli_visualizer(queue, stocks):
     UP     = f"\x1B[{numero_stock}A" # sposta il cursore in alto tanto quanto il numero_stock
     CLR    = "\x1B[0K"
 
-    ascii_art = ""
-
-    with open("capital.txt") as capital_logo:
-        for line in capital_logo.readlines():
-            ascii_art += line 
-
+    ascii_art = display_ascii_art_color("images/console-trader.jpg")
     print(ascii_art,"\n"*numero_stock)
 
+    
+    asyncio.sleep(60)
     size = shutil.get_terminal_size()
     prev_width, prev_height = size.columns, size.lines
 
     while True:
 
         size = shutil.get_terminal_size()
-        width, height = size.columns, size.lines
+        width, height = size.columns, size.lines 
 
         if prev_width != width or prev_height != height:
             prev_width = width
             prev_height = height
             os.system("cls||clear")
-            os.system(f"jp2a --width={width} --output=capital.txt --colors image/capital2.jpeg")
-            ascii_art = ""
-            with open("capital.txt") as capital_logo:
-                for line in capital_logo.readlines():
-                    ascii_art += line 
+            ascii_art = display_ascii_art_color("images/console-trader.jpg")
             print(ascii_art,"\n"*numero_stock)
 
 
         info_lenght = 105
 
-        left_space = (width - info_lenght) / 2
+        left_space = (width - info_lenght) / 2 if ((width - info_lenght) / 2) > 0 else 0
 
         colonne = [UP,"Time",left_space,"Symbol","Company Name","$ Price","% Chg","News",CLR]
+
         print("{}{:>{}} {:>20}  {:>25} {:>20} {:>20} {:>20}{}\n".format(*colonne))
 
         response = await queue.get()
@@ -174,32 +170,36 @@ async def main(client, CST, TOKEN, epics, stocks):
 
 
 
-
 email = input('Insert your capital.com email: ')
-pssw =  getpass.getpass("Insert your password:")
-api_key =  getpass.getpass("Insert your api key:")
+pssw = getpass.getpass("Insert your password:")
+api_key = getpass.getpass("Insert your api key:")
 
 
 client = Capital(email, pssw, api_key)
 CST = client.CST
 TOKEN = client.TOKEN
 # client.selezioneEpic()
-with open("epic2.txt","r+") as file:
 
-    elencoEpic = []
-    stocks = {}
-    count = 1
+# 1. Connessione al database e select dei symbols di capital.com
+connection = sqlite3.connect('capital_stocks.db')
+cursor = connection.cursor()
+cursor.execute('SELECT symbol, name FROM stocks')
 
-    for line in file.readlines():
-        epic = line.split('#')[0].strip()
-        epicName = line[:-1].split('#')[-1].strip()
-        elencoEpic.append(epic)
-        stocks[epic] = {'time':"00:00:00",'name':epicName,'price':0,'lprice':0,'chg':0,'vol':0,'news':0}
-        print("{:<3} {:<20}".format(elencoEpic.index(epic),epicName[:15]),end = '')
-        if count == 8:
-            count = 0
-            print()
-        count += 1
+elencoEpic = []
+stocks = {}
+count = 1
+
+for row in cursor:
+    symbol, name = row
+    elencoEpic.append(symbol)
+    stocks[symbol] = {'time':"00:00:00",'name':name,'price':0,'lprice':0,'chg':0,'vol':0,'news':0}
+    print("{:<3} {:<20}".format(elencoEpic.index(symbol),name[:15]),end = '')
+    if count == 4:
+        count = 0
+        print()
+    count += 1
+
+connection.close()
 
 
 seleioneUtente = input("\n\nScrivi i numeri degli asset desiserati separandoli con uno spazio: ")
@@ -210,6 +210,7 @@ newstocks = { k:v for k,v in stocks.items() if k in epics}
 # epics = ["OIL_CRUDE","NATURALGAS","GOLD"]
 
 os.system("cls||clear")
+
 
 try:
     asyncio.run(main(client,CST, TOKEN, epics, newstocks))
